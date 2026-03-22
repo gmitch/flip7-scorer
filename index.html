@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flip7 Scorer</title>
+    <!-- Modern high-quality fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="noise-overlay"></div>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="logo">FLIP<span class="accent-text">7</span><span class="subtitle">TRACKER</span></h1>
+            <div id="room-badge" class="room-badge hidden"><span class="pulse-dot"></span> ROOM <span id="current-room-id" class="accent-text">---</span></div>
+        </header>
+
+        <!-- Loader -->
+        <div id="global-loader" class="loader-container hidden">
+            <div class="spinner"></div>
+            <p>Syncing...</p>
+        </div>
+
+        <div class="view-manager">
+            <!-- View: Setup API -->
+            <section id="view-setup" class="view">
+                <div class="glass-panel slide-up delay-1">
+                    <h2>Configuration</h2>
+                    <p class="desc">Enter your Google Apps Script Web App URL to connect to the scoring backend.</p>
+                    <form id="setup-form">
+                        <div class="input-group">
+                            <label for="api-url">Web App URL</label>
+                            <input type="url" id="api-url" placeholder="https://script.google.com/..." required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-glow">Save Configuration <span>→</span></button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- View: Entry (Login / Create) -->
+            <section id="view-entry" class="view hidden">
+                <div class="glass-panel slide-up delay-1">
+                    <h2>Join Game</h2>
+                    <p class="desc">Enter a secret room word to join or start a Flip 7 game.</p>
+                    <form id="entry-form">
+                        <div class="input-group">
+                            <label for="room-input">Secret Room Word</label>
+                            <input type="text" id="room-input" placeholder="e.g. FAMILYGAME" required autocomplete="off" uppercase>
+                        </div>
+                        <div class="input-group">
+                            <label for="name-input">Your Player Name</label>
+                            <input type="text" id="name-input" placeholder="e.g. Alice" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-glow" id="btn-join">Enter Lobby <span>→</span></button>
+                        <p class="error-msg" id="entry-error"></p>
+                    </form>
+                </div>
+            </section>
+
+            <!-- View: Lobby -->
+            <section id="view-lobby" class="view hidden">
+                <div class="glass-panel slide-up">
+                    <div class="lobby-header">
+                        <h2>Lobby</h2>
+                        <span class="status-badge">Waiting for players</span>
+                    </div>
+                    
+                    <div class="players-collection" id="lobby-players-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="lobby-actions">
+                        <button class="btn btn-outline" id="btn-toggle-add-player">+ Add Offline Player</button>
+                        <button class="btn btn-glow" id="btn-start-game">Start Game</button>
+                    </div>
+                    
+                    <div id="add-player-form-container" class="slide-down hidden mt-3">
+                        <form id="add-player-form" class="inline-form">
+                            <input type="text" id="new-player-name" placeholder="Name (e.g. Grandma)" required autocomplete="off">
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </form>
+                    </div>
+                    
+                    <p class="error-msg" id="lobby-error"></p>
+                </div>
+            </section>
+
+            <!-- View: Game Board -->
+            <section id="view-game" class="view hidden">
+                <div class="round-header glass-panel slide-down">
+                    <h2>Round <span id="current-round-number" class="accent-text highlight-pop">1</span></h2>
+                    <p>Tap a player to submit their score. Game to 200 Points.</p>
+                </div>
+                
+                <div class="game-board-grid delay-1" id="game-players-list">
+                    <!-- Populated by JS. Cards look like:
+                        <div class="player-card">
+                            <div class="card-top"><span class="name">Alice</span> <span class="badge pending">Thinking...</span></div>
+                            <div class="score-main">45</div>
+                            <div class="score-sub">Total Points</div>
+                        </div>
+                    -->
+                </div>
+            </section>
+
+            <!-- View: Game Over -->
+            <section id="view-game-over" class="view hidden">
+                <div class="glass-panel winner-panel pop-in">
+                    <div class="confetti-icon">🎉</div>
+                    <h2 class="winner-title gradient-text">Game Over!</h2>
+                    <h3 class="winner-name"><span id="winner-name-display" class="accent-text">Loading...</span> WINS!</h3>
+                    
+                    <div class="final-score-board" id="final-scores-list">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <button class="btn btn-glow mt-4" id="btn-play-again">↺ Play Again</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- UI Modal for Score Input -->
+    <div id="score-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content glass-panel pop-up">
+            <button class="modal-close" id="btn-close-modal">&times;</button>
+            <div class="modal-header">
+                <h3>Score for <span id="scoring-player-name" class="accent-text">...</span></h3>
+                <p>Round <span id="modal-round-number">1</span></p>
+            </div>
+            
+            <div class="score-actions">
+                <button class="btn btn-danger btn-block btn-lg wiggle-hover" id="btn-quick-bust">
+                    💥 BUST (0 points)
+                </button>
+                
+                <div class="divider"><span>OR</span></div>
+                
+                <form id="score-form">
+                    <div class="input-group">
+                        <label for="round-score">Calculated Round Score</label>
+                        <input type="number" id="round-score" placeholder="e.g. 42" required min="0" autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn btn-glow btn-block">Submit Score</button>
+                    <p class="error-msg" id="score-error"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
