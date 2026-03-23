@@ -31,7 +31,7 @@ function doPost(e) {
     }
 
     const action = payload.action;
-    const roomCode = payload.roomCode ? payload.roomCode.toUpperCase() : null;
+    const roomCode = payload.roomCode ? String(payload.roomCode).toUpperCase() : null;
     
     if (!roomCode) {
       return createJsonResponse({ error: 'Room code required' });
@@ -206,7 +206,7 @@ function saveRoomState(roomCode, state) {
   const stateStr = JSON.stringify(state);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === roomCode) {
+    if (String(data[i][0]) === String(roomCode)) {
       // Row index is i + 1
       sheet.getRange(i + 1, 2).setValue(stateStr);
       sheet.getRange(i + 1, 3).setValue(timestamp);
