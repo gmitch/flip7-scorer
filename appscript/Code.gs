@@ -10,6 +10,9 @@ function setup() {
     // Lock the header row
     sheet.setFrozenRows(1);
     
+    // Format Column A as Plain Text to prevent dates like "APRIL 11" from converting
+    sheet.getRange('A:A').setNumberFormat('@');
+    
     // Also remove the default Sheet1 if it exists and is not the only sheet
     const sheet1 = ss.getSheetByName('Sheet1');
     if (sheet1 && ss.getSheets().length > 1) {
@@ -117,6 +120,9 @@ function doPost(e) {
         const allSubmitted = state.players.every(p => p.roundScores[roundStr] !== undefined);
         
         if (allSubmitted) {
+          // Track who went last in this round
+          state.lastRoundLastPlayer = playerName;
+          
           // Check for a winner (>= 200 points)
           const winners = state.players.filter(p => p.totalScore >= MAX_SCORE);
           if (winners.length > 0) {
@@ -130,6 +136,38 @@ function doPost(e) {
             // Next round
             state.currentRound += 1;
           }
+        }
+        
+        saveRoomState(roomCode, state);
+        return createJsonResponse({ success: true, state: state });
+
+      } else if (action === 'EDIT_PAST_SCORE') {
+        if (!state) throw new Error('Room not found');
+        
+        const playerName = payload.playerName;
+        const roundNum = String(payload.round);
+        const score = parseInt(payload.score, 10);
+        if (isNaN(score)) throw new Error('Invalid score submitted');
+        
+        const player = state.players.find(p => p.name === playerName);
+        if (!player) throw new Error('Player not found in this room');
+        
+        if (player.roundScores[roundNum] === undefined) {
+          throw new Error('Score for this round does not exist yet');
+        }
+        
+        player.roundScores[roundNum] = score;
+        player.totalScore = Object.values(player.roundScores).reduce((a, b) => a + b, 0);
+        
+        // Recheck win condition if game is still active, in case edit triggered a win
+        if (state.status === 'ACTIVE') {
+           const winners = state.players.filter(p => p.totalScore >= MAX_SCORE);
+           if (winners.length > 0) {
+              state.status = 'FINISHED';
+              const highestScore = Math.max(...winners.map(w => w.totalScore));
+              const topWinners = winners.filter(w => w.totalScore === highestScore);
+              state.winner = topWinners.map(w => w.name).join(' & ');
+           }
         }
         
         saveRoomState(roomCode, state);
@@ -185,7 +223,13 @@ function getRoomState(roomCode) {
   
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === roomCode) {
+    // Convert to string and handle Date objects to prevent "APRIL 11" date parsing bugs
+    let cellVal = data[i][0];
+    if (cellVal instanceof Date) {
+      // Just a fallback if it was already saved as a Date. 
+      // Safest is to just convert everything to uppercase string
+    }
+    if (String(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
       try {
         return JSON.parse(data[i][1]);
       } catch (e) {
@@ -206,7 +250,7 @@ function saveRoomState(roomCode, state) {
   const stateStr = JSON.stringify(state);
   
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === String(roomCode)) {
+    if (String(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
       // Row index is i + 1
       sheet.getRange(i + 1, 2).setValue(stateStr);
       sheet.getRange(i + 1, 3).setValue(timestamp);
@@ -215,5 +259,6 @@ function saveRoomState(roomCode, state) {
   }
   
   // If not found, append to bottom
-  sheet.appendRow([roomCode, stateStr, timestamp]);
+  // Use a leading apostrophe to force plain text in case column formatting was missed
+  sheet.appendRow([`'${roomCode}`, stateStr, timestamp]);
 }

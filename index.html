@@ -131,6 +131,7 @@
             <div class="modal-header">
                 <h3>Score for <span id="scoring-player-name" class="accent-text">...</span></h3>
                 <p>Round <span id="modal-round-number">1</span></p>
+                <div id="past-scores-list" style="margin-top: 10px; font-size: 0.9em; max-height: 80px; overflow-y: auto;"></div>
             </div>
             
             <div class="score-actions">
@@ -143,7 +144,7 @@
                 <form id="score-form">
                     <div class="input-group">
                         <label for="round-score">Calculated Round Score</label>
-                        <input type="number" id="round-score" placeholder="e.g. 42" required min="0" autocomplete="off">
+                        <input type="number" id="round-score" placeholder="e.g. 42 (or -10 to fix mistake)" required autocomplete="off">
                     </div>
                     <button type="submit" class="btn btn-glow btn-block">Submit Score</button>
                     <p class="error-msg" id="score-error"></p>

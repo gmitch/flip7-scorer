@@ -50,10 +50,23 @@ function init() {
     if (!state.apiURL) {
         showView('setup');
     } else {
-        showView('entry');
         if (state.roomCode && state.playerName) {
             ui.roomInput.value = state.roomCode;
             ui.nameInput.value = state.playerName;
+            
+            // Show loader while recovering
+            ui.loader.classList.remove('hidden');
+            // Attempt to automatically rejoin/recover the session
+            apiCall('GET_STATE').then(res => {
+                ui.loader.classList.add('hidden');
+                if (res && res.state) {
+                    startPolling();
+                } else {
+                    showView('entry');
+                }
+            });
+        } else {
+            showView('entry');
         }
     }
 }
@@ -183,24 +196,44 @@ function renderGame() {
     ui.roundNumber.textContent = state.gameState.currentRound;
     const currentRoundStr = state.gameState.currentRound.toString();
     
-    const html = state.gameState.players.map(p => {
+    // Sort players for leaderboard effect
+    const sortedPlayers = [...state.gameState.players].sort((a, b) => b.totalScore - a.totalScore);
+    
+    let lastPlayerHtml = '';
+    if (state.gameState.lastRoundLastPlayer && state.gameState.currentRound > 1) {
+        lastPlayerHtml = `<div style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Last round's final player: <strong style="color: #fff;">${state.gameState.lastRoundLastPlayer}</strong></div>`;
+    }
+
+    const html = sortedPlayers.map((p, index) => {
         const hasScored = p.roundScores[currentRoundStr] !== undefined;
         // Escape quotes to prevent injection issues in onclick attribute
         const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        
+        let roundHistory = [];
+        for (let r = 1; r < state.gameState.currentRound; r++) {
+            if (p.roundScores[r] !== undefined) {
+                roundHistory.push(`R${r}: ${p.roundScores[r]}`);
+            }
+        }
+        const historyText = roundHistory.length > 0 ? roundHistory.join(' | ') : 'No history yet';
+        
         return `
         <div class="player-card" onclick="openScoreModal('${safeName}')">
             <div class="card-top">
-                <span class="name">${p.name}</span> 
+                <span class="name"><span style="opacity: 0.5; font-size: 0.8em; margin-right: 4px;">#${index + 1}</span> ${p.name}</span> 
                 <span class="badge ${hasScored ? 'done' : 'pending'}">${hasScored ? 'Scored' : 'Waiting...'}</span>
             </div>
             <div class="score-main">${p.totalScore}</div>
+            <div class="score-sub" style="font-size: 0.8rem; margin-bottom: 5px;">${historyText}</div>
             <div class="score-sub">Total Points <span class="accent-text" style="float:right; font-size:1.2rem; opacity:0.5; font-weight:bold">+</span></div>
         </div>
         `;
     }).join('');
     
-    if (ui.gameList.innerHTML !== html) {
-        ui.gameList.innerHTML = html;
+    const fullHtml = lastPlayerHtml + html;
+    
+    if (ui.gameList.innerHTML !== fullHtml) {
+        ui.gameList.innerHTML = fullHtml;
     }
 }
 
@@ -225,14 +258,42 @@ function renderGameOver() {
 window.openScoreModal = function(playerName) {
     if (state.gameState?.status !== 'ACTIVE') return;
     
+    const player = state.gameState.players.find(p => p.name === playerName);
+    
     state.scoringPlayerName = playerName;
     ui.modalPlayerName.textContent = playerName;
     ui.modalRoundName.textContent = state.gameState.currentRound;
     ui.scoreInput.value = '';
     
+    // Show past scores
+    const pastScores = document.getElementById('past-scores-list');
+    if (pastScores && player) {
+        let html = '';
+        for (let r = 1; r <= state.gameState.currentRound; r++) {
+            if (player.roundScores[r] !== undefined) {
+                html += `<div class="past-score-item">R${r}: <strong>${player.roundScores[r]}</strong> <button type="button" onclick="editPastScore('${playerName}', ${r})" class="btn-small">Edit</button></div>`;
+            }
+        }
+        pastScores.innerHTML = html;
+    }
+    
     ui.scoreModal.classList.remove('hidden');
     // Focus after popup animation
     setTimeout(() => ui.scoreInput.focus(), 50);
+};
+
+window.editPastScore = async function(playerName, roundNum) {
+    const newScoreStr = prompt(`Enter new score for ${playerName} in Round ${roundNum}:`);
+    if (newScoreStr === null || newScoreStr.trim() === '') return;
+    const newScore = parseInt(newScoreStr, 10);
+    if (isNaN(newScore)) {
+        alert("Invalid score");
+        return;
+    }
+    const res = await apiCall('EDIT_PAST_SCORE', { playerName: playerName, round: roundNum, score: newScore });
+    if (res && res.success) {
+        closeScoreModal();
+    }
 };
 
 function closeScoreModal() {
