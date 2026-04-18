@@ -1,3 +1,5 @@
+const FE_VERSION = '2026-04-18.6';
+
 const state = {
     apiURL: localStorage.getItem('flip7_api_url') || '',
     roomCode: localStorage.getItem('flip7_room') || '',
@@ -47,6 +49,7 @@ const ui = {
 };
 
 function init() {
+    document.getElementById('fe-version').textContent = FE_VERSION;
     bindEvents();
     if (!state.apiURL) {
         showView('setup');
@@ -125,6 +128,7 @@ async function apiCall(action, payload = {}) {
         });
         const data = await response.json();
         
+        if (data.beVersion) document.getElementById('be-version').textContent = data.beVersion;
         if (data.error) {
             console.error('API Error:', data.error);
             showError(action, data.error);

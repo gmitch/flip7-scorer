@@ -1,5 +1,6 @@
 const SHEET_NAME = 'Games';
 const MAX_SCORE = 200;
+const BE_VERSION = '2026-04-18.6';
 
 // Converts a sheet cell value back to the original room-code string.
 // Google Sheets will auto-convert strings like "APRIL 11" into Date objects if
@@ -220,7 +221,7 @@ function doGet(e) {
 }
 
 function createJsonResponse(data) {
-  const output = ContentService.createTextOutput(JSON.stringify(data));
+  const output = ContentService.createTextOutput(JSON.stringify({ ...data, beVersion: BE_VERSION }));
   output.setMimeType(ContentService.MimeType.JSON);
   return output;
 }
