@@ -20,6 +20,7 @@ const ui = {
     loader: document.getElementById('global-loader'),
     roomBadge: document.getElementById('room-badge'),
     roomIdText: document.getElementById('current-room-id'),
+    btnExitRoom: document.getElementById('btn-exit-room'),
     setupForm: document.getElementById('setup-form'),
     apiUrlInput: document.getElementById('api-url'),
     entryForm: document.getElementById('entry-form'),
@@ -302,6 +303,30 @@ function closeScoreModal() {
     ui.scoreInput.blur();
 }
 
+function exitRoom() {
+    if (!state.roomCode) return;
+    if (!confirm('Exit this room and return to the start? Your local session will be cleared.')) return;
+
+    if (state.pollingInterval) {
+        clearInterval(state.pollingInterval);
+        state.pollingInterval = null;
+    }
+
+    state.roomCode = '';
+    state.playerName = '';
+    state.gameState = null;
+    state.scoringPlayerName = null;
+    localStorage.removeItem('flip7_room');
+    localStorage.removeItem('flip7_name');
+
+    closeScoreModal();
+    ui.roomInput.value = '';
+    ui.nameInput.value = '';
+    ui.roomBadge.classList.add('hidden');
+
+    showView(state.apiURL ? 'entry' : 'setup');
+}
+
 function startPolling() {
     if (state.pollingInterval) clearInterval(state.pollingInterval);
     apiCall('GET_STATE'); // Initial fetch
@@ -378,6 +403,8 @@ function bindEvents() {
     ui.btnPlayAgain.addEventListener('click', async () => {
         await apiCall('RESET_GAME');
     });
+
+    ui.btnExitRoom.addEventListener('click', exitRoom);
 }
 
 document.addEventListener('DOMContentLoaded', init);
