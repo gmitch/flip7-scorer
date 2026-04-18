@@ -5,5 +5,8 @@
   "description": "Flip7 scorer — Apps Script backend with a Node-based unit test harness.",
   "scripts": {
     "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }
