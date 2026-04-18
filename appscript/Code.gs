@@ -265,9 +265,10 @@ function saveRoomState(roomCode, state) {
     }
   }
 
-  // If not found, append to bottom. Explicitly mark the room-code cell as plain
-  // text so Sheets never auto-converts date-like codes (e.g. "APRIL 11") on write.
-  sheet.appendRow([roomCode, stateStr, timestamp]);
-  const newRow = sheet.getLastRow();
+  // If not found, write as a new row. Set column A format to plain text BEFORE
+  // writing the value so Sheets never auto-converts date-like codes (e.g. "APRIL 11").
+  const newRow = sheet.getLastRow() + 1;
   sheet.getRange(newRow, 1).setNumberFormat('@').setValue(roomCode);
+  sheet.getRange(newRow, 2).setValue(stateStr);
+  sheet.getRange(newRow, 3).setValue(timestamp);
 }
