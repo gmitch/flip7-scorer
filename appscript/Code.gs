@@ -211,25 +211,30 @@ function createJsonResponse(data) {
   return output;
 }
 
-// Helper to get row index and parse JSON
+// Month names for reconstructing date-like room codes that Sheets auto-converted to Date objects.
+const MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+function cellToRoomCode(cellVal) {
+  if (cellVal instanceof Date) {
+    // Sheets auto-converted a date-like string (e.g. "APRIL 11") to a Date.
+    // Reconstruct the original "MONTHNAME DAY" string so comparisons still work.
+    return MONTH_NAMES[cellVal.getMonth()] + ' ' + cellVal.getDate();
+  }
+  return String(cellVal);
+}
+
 function getRoomState(roomCode) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
-  
+
   if (!sheet) {
     setup(); // create if missing
     sheet = ss.getSheetByName(SHEET_NAME);
   }
-  
+
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    // Convert to string and handle Date objects to prevent "APRIL 11" date parsing bugs
-    let cellVal = data[i][0];
-    if (cellVal instanceof Date) {
-      // Just a fallback if it was already saved as a Date. 
-      // Safest is to just convert everything to uppercase string
-    }
-    if (String(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
+    if (cellToRoomCode(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
       try {
         return JSON.parse(data[i][1]);
       } catch (e) {
@@ -250,15 +255,18 @@ function saveRoomState(roomCode, state) {
   const stateStr = JSON.stringify(state);
   
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
+    if (cellToRoomCode(data[i][0]).toUpperCase() === roomCode.toUpperCase()) {
       // Row index is i + 1
       sheet.getRange(i + 1, 2).setValue(stateStr);
       sheet.getRange(i + 1, 3).setValue(timestamp);
       return;
     }
   }
-  
-  // If not found, append to bottom
-  // Use a leading apostrophe to force plain text in case column formatting was missed
-  sheet.appendRow([`'${roomCode}`, stateStr, timestamp]);
+
+  // If not found, append to bottom — set plain text format on the room code cell
+  // so Sheets never auto-converts date-like names (e.g. "APRIL 11") to a Date object.
+  const lastRow = sheet.getLastRow() + 1;
+  sheet.getRange(lastRow, 1).setNumberFormat('@').setValue(roomCode);
+  sheet.getRange(lastRow, 2).setValue(stateStr);
+  sheet.getRange(lastRow, 3).setValue(timestamp);
 }
