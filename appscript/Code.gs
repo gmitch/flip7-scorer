@@ -5,11 +5,12 @@ const MAX_SCORE = 200;
 // Google Sheets will auto-convert strings like "APRIL 11" into Date objects if
 // column A is not explicitly formatted as plain text. This helper reconstructs
 // the "MONTHNAME DAY" string from such a Date so lookups still match.
-const ROOM_CODE_MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
-                         'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 function cellToRoomCode(cellVal) {
   if (cellVal instanceof Date) {
-    return ROOM_CODE_MONTHS[cellVal.getMonth()] + ' ' + cellVal.getDate();
+    const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    const month = Utilities.formatDate(cellVal, tz, 'MMMM').toUpperCase();
+    const day = parseInt(Utilities.formatDate(cellVal, tz, 'd'), 10);
+    return month + ' ' + day;
   }
   return String(cellVal);
 }
