@@ -13,6 +13,7 @@ const {
   createMockSpreadsheetApp,
   mockLockService,
   mockContentService,
+  mockUtilities,
 } = require('./mocks');
 
 const CODE_PATH = path.join(__dirname, '..', 'appscript', 'Code.gs');
@@ -25,6 +26,7 @@ function loadCodeGs({ spreadsheet } = {}) {
     SpreadsheetApp: createMockSpreadsheetApp(ss),
     LockService: mockLockService,
     ContentService: mockContentService,
+    Utilities: mockUtilities,
     console,
     Date,
     JSON,

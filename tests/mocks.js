@@ -85,11 +85,26 @@ class MockSpreadsheet {
       if (v === target) delete this.sheets[k];
     }
   }
+  getSpreadsheetTimeZone() { return 'America/New_York'; }
 }
 
 function createMockSpreadsheetApp(spreadsheet) {
-  return { getActiveSpreadsheet: () => spreadsheet };
+  return {
+    getActiveSpreadsheet: () => spreadsheet,
+    flush: () => {},
+  };
 }
+
+const mockUtilities = {
+  formatDate: (date, tz, fmt) => {
+    // Minimal implementation: supports 'MMMM' and 'd' formats used by cellToRoomCode
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    if (fmt === 'MMMM') return months[date.getMonth()];
+    if (fmt === 'd') return String(date.getDate());
+    return String(date);
+  },
+};
 
 const mockLockService = {
   getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }),
@@ -110,4 +125,5 @@ module.exports = {
   createMockSpreadsheetApp,
   mockLockService,
   mockContentService,
+  mockUtilities,
 };

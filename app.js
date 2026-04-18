@@ -1,4 +1,4 @@
-const FE_VERSION = '2026-04-18.6';
+const FE_VERSION = '2026-04-18.7';
 
 const state = {
     apiURL: localStorage.getItem('flip7_api_url') || '',

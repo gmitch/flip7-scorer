@@ -1,6 +1,6 @@
 const SHEET_NAME = 'Games';
 const MAX_SCORE = 200;
-const BE_VERSION = '2026-04-18.6';
+const BE_VERSION = '2026-04-18.7';
 
 // Converts a sheet cell value back to the original room-code string.
 // Google Sheets will auto-convert strings like "APRIL 11" into Date objects if
@@ -86,12 +86,15 @@ function doPost(e) {
           };
         }
         
-        if (state.status !== 'LOBBY') {
-          throw new Error('Game already started. Cannot join mid-game.');
-        }
-
         // Check if player already exists
         const exists = state.players.find(p => p.name === playerName);
+
+        if (state.status !== 'LOBBY') {
+          if (!exists) throw new Error('Game already started. Cannot join mid-game.');
+          // Existing player reconnecting to an active/finished game — just return current state
+          return createJsonResponse({ success: true, state: state });
+        }
+
         if (!exists) {
           state.players.push({
             name: playerName,
