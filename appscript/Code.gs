@@ -268,7 +268,10 @@ function saveRoomState(roomCode, state) {
   // If not found, write as a new row. Set column A format to plain text BEFORE
   // writing the value so Sheets never auto-converts date-like codes (e.g. "APRIL 11").
   const newRow = sheet.getLastRow() + 1;
-  sheet.getRange(newRow, 1).setNumberFormat('@').setValue(roomCode);
+  const roomCell = sheet.getRange(newRow, 1);
+  roomCell.setNumberFormat('@');
+  SpreadsheetApp.flush(); // force format to land before value is written
+  roomCell.setValue(roomCode);
   sheet.getRange(newRow, 2).setValue(stateStr);
   sheet.getRange(newRow, 3).setValue(timestamp);
 }
