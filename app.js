@@ -150,7 +150,7 @@ async function apiCall(action, payload = {}) {
 }
 
 function updateGameState(newState) {
-    if (!newState) return;
+    if (!newState || !state.roomCode) return;
     const oldStatus = state.gameState?.status;
     const oldRound = state.gameState?.currentRound;
     state.gameState = newState;
